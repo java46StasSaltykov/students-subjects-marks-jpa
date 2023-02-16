@@ -1,9 +1,8 @@
 package telran.spring.data;
 
-import java.util.*;
-import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.IntStream;
+import org.slf4j.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,50 +13,59 @@ import telran.spring.data.service.CollegeService;
 @Component
 public class RandomDbCreation {
 	
-	private static Logger LOG = LoggerFactory.getLogger(RandomDbCreation.class);
-	static Long studentId = 2L;
-	static Long subjectId = 2L;
-	Map<Long, Student> studentsMap = new HashMap<Long, Student>(); 
-	Map<Long, Subject> subjectsMap = new HashMap<Long, Subject>(); 
-	@Value("${app.marks.amount}")
-	int marksAmount;
+	static Logger LOG = LoggerFactory.getLogger(RandomDbCreation.class);
+	
+	@Value("${app.marks.amount: 100}")
+	int nMarks;
+	
+	@Value("${spring.jpa.hibernate.ddl-auto: update}")
+	String ddlAutoProp;
 	
 	@Autowired
 	CollegeService collegeService;
 	
+	String names[] = { "Abraham", "Sarah", "Itshak", "Rahel", "Asaf", "Yacob", "Rivka", "Yosef", "Benyanim", "Dan",
+			"Ruben", "Moshe", "Aron", "Yehashua", "David", "Salomon", "Nefertity", "Naftaly", "Natan", "Asher" };
+	String subjects[] = { "Java core", "Java Technologies", "Spring Data", "Spring Security", "Spring Cloud", "CSS",
+			"HTML", "JS", "React", "Material-UI" };
+
 	@PostConstruct
-	void dbCreation() {
-		collegeService.addStudent(new Student(1, "Vasya"));
-		collegeService.addSubject(new Subject(1, "Java"));
-		collegeService.addMark(new Mark(1, 1, 95));
+	void createDB() {
+		if (ddlAutoProp.equals("create")) {
+			addStudents();
+			addSubjects();
+			addMarks();
+			LOG.info("created {} random marks in DB", nMarks);
+		} else {
+			LOG.warn("DB no created - assumed that it exists");
+		}
+	}
 
-		String[] names = { "Abraham", "Sarah", "Itshak", "Rahel", "Asaf", "Yacob", "Rivka", "Yosef", "Benyanim", "Dan",
-				"Ruben", "Moshe", "Aron", "Yehashua", "David", "Salomon", "Nefertity", "Naftaly", "Natan", "Asher" };
-		String subjects[] = { "Java core", "Java Technologies", "Spring Data", "Spring Security", "Spring Cloud", "CSS",
-				"HTML", "JS", "React", "Material-UI" };
+	private int getRandomNumber(int min, int max) {
+		return ThreadLocalRandom.current().nextInt(min, max + 1);
+	}
 
-		Arrays.stream(names).forEach(s -> createStudent(s));
-		LOG.debug("Students created.");
-		Arrays.stream(subjects).forEach(s -> createSubject(s));
-		LOG.debug("Subjects created.");
-		Stream.generate(() -> new Mark(
-				studentsMap.get((long) ((int) (Math.random() * names.length + 1))).id,
-				subjectsMap.get((long) ((int) (Math.random() * subjects.length + 1))).id,
-				(int) (Math.random() * 100 + 1)
-				)).limit(marksAmount).forEach(m -> collegeService.addMark(m));
-		LOG.debug("Marks added.");
+	private void addMarks() {
+		IntStream.range(0, nMarks).forEach(i -> addOneMark());
+	}
+
+	private void addOneMark() {
+		int stid = getRandomNumber(1, names.length);
+		int suid = getRandomNumber(1, subjects.length);
+		int mark = getRandomNumber(60, 100);
+		collegeService.addMark(new Mark(stid, suid, mark));
+	}
+
+	private void addSubjects() {
+		IntStream.range(0, subjects.length).forEach(i -> {
+			collegeService.addSubject(new Subject(i + 1, subjects[i]));
+		});
+	}
+
+	private void addStudents() {
+		IntStream.range(0, names.length).forEach(i -> {
+			collegeService.addStudent(new Student(i + 1, names[i]));
+		});
 	}
 	
-	void createStudent(String name) {
-		Student newStudent = new Student(studentId, name);
-		collegeService.addStudent(newStudent);
-		studentsMap.put(newStudent.id, newStudent);
-		studentId++;
-	}
-	void createSubject(String subject) {
-		Subject newSubject = new Subject(subjectId, subject);
-		collegeService.addSubject(newSubject);
-		subjectsMap.put(newSubject.id, newSubject);
-		subjectId++;
-	}
 }
