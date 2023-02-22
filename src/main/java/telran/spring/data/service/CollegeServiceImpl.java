@@ -1,18 +1,12 @@
 package telran.spring.data.service;
 
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.*;
 import telran.spring.data.entities.*;
-import telran.spring.data.model.Mark;
-import telran.spring.data.model.Student;
-import telran.spring.data.model.Subject;
-import telran.spring.data.proj.IntervalMarksCount;
-import telran.spring.data.proj.MarkProj;
-import telran.spring.data.proj.StudentAvgMark;
-import telran.spring.data.proj.StudentName;
-import telran.spring.data.proj.StudentSubjectMark;
+import telran.spring.data.model.*;
+import telran.spring.data.proj.*;
 import telran.spring.data.repo.*;
 
 @Service
@@ -22,6 +16,14 @@ public class CollegeServiceImpl implements CollegeService {
 	StudentRepository studentRepository;
 	SubjectRepository subjectRepository;
 	MarkRepository markRepository;
+	EntityManager em;
+	
+	public CollegeServiceImpl(StudentRepository studentRepository, SubjectRepository subjectRepository, MarkRepository markRepository, EntityManager em) {
+		this.studentRepository = studentRepository;
+		this.subjectRepository = subjectRepository;
+		this.markRepository = markRepository;
+		this.em = em;
+	}
 
 	@Override
 	@Transactional
@@ -30,7 +32,6 @@ public class CollegeServiceImpl implements CollegeService {
 			throw new IllegalStateException(String.format("Student with id %d already exist", student.id));
 		}
 		studentRepository.save(new StudentEntity(student.id, student.name));
-
 	}
 
 	@Override
@@ -55,13 +56,6 @@ public class CollegeServiceImpl implements CollegeService {
 		}
 		MarkEntity markEntity = new MarkEntity(student, subject, mark.mark);
 		markRepository.save(markEntity);
-	}
-
-	public CollegeServiceImpl(StudentRepository studentRepository, SubjectRepository subjectRepository,
-			MarkRepository markRepository) {
-		this.studentRepository = studentRepository;
-		this.subjectRepository = subjectRepository;
-		this.markRepository = markRepository;
 	}
 
 	@Override
@@ -102,6 +96,55 @@ public class CollegeServiceImpl implements CollegeService {
 	@Override
 	public List<IntervalMarksCount> marksDistribution(int interval) {
 		return markRepository.marksDistribution(interval);
+	}
+
+	@Override
+	public List<String> getSqlQuery(String sqlQuery) {
+		var query = em.createNativeQuery(sqlQuery);
+		return getResult(query);
+	}
+
+	@Override
+	public List<String> getJpqlQuery(String jpqlQuery) {
+		var query = em.createQuery(jpqlQuery);
+		return getResult(query);
+	}
+	
+	@SuppressWarnings("unchecked")
+	private List<String> getResult(Query query) {
+		var list = query.getResultList();
+		List<String> res = Collections.emptyList();
+		if (!list.isEmpty()) {
+			res = list.get(0).getClass().isArray() ?
+					multiProjectionResult(list) : singleProjectionResult(list);
+		}
+		return res;
+	}
+
+	private List<String> singleProjectionResult(List<Object> list) {
+		return list.stream().map(Object::toString).toList();
+	}
+
+	private List<String> multiProjectionResult(List<Object[]> list) {
+		return list.stream().map(Arrays::deepToString).toList();
+	}
+
+	@Override
+	@Transactional
+	public List<String> removeStudents(double markCountLess) {
+		List<StudentEntity> studentsToRemove = studentRepository.worstStudents(markCountLess);
+		studentsToRemove.forEach(studentRepository::delete);
+		List<String> removedStudentNames = studentsToRemove.stream().map(StudentEntity::getName).toList();
+		return removedStudentNames;
+	}
+
+	@Override
+	@Transactional
+	public List<String> removeLeastPopularSubjects(int marksThreshold) {
+		List<SubjectEntity> subjectsToRemove = subjectRepository.leastPopularSubjects(marksThreshold);
+		subjectsToRemove.forEach(subjectRepository::delete);
+		List<String> removedSubjects = subjectsToRemove.stream().map(SubjectEntity::getSubject).toList();
+		return removedSubjects;
 	}
 
 }
