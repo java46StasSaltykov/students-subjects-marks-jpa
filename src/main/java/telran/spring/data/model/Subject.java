@@ -3,17 +3,15 @@ package telran.spring.data.model;
 import java.util.Objects;
 
 public class Subject {
-	
 	public long id;
 	public String subject;
-	
+
 	public Subject(long id, String subject) {
 		this.id = id;
 		this.subject = subject;
 	}
-	
+
 	public Subject() {
-		
 	}
 
 	@Override
@@ -32,5 +30,5 @@ public class Subject {
 		Subject other = (Subject) obj;
 		return id == other.id && Objects.equals(subject, other.subject);
 	}
-	
+
 }

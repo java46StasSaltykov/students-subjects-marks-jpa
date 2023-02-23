@@ -38,6 +38,8 @@ public interface CollegeService {
 	
 	List<String> removeLeastPopularSubjects(int marksThreshold);
 	
+	void increaseMarksStudent(long id, int percent);
+	
 }
 
 

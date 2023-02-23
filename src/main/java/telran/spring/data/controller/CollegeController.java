@@ -70,8 +70,13 @@ public class CollegeController {
 	}
 	
 	@DeleteMapping("subjects")
-	List<String> removeSubjects(@RequestParam("threshold") int marksThreshold) {
+	List<String> removeSubjects(@RequestParam("marksThreshold") int marksThreshold) {
 		return collegeService.removeLeastPopularSubjects(marksThreshold);
+	}
+	
+	@PutMapping("marks")
+	void increaseMarks(@RequestParam("studentId") long id, @RequestParam("delta") int delta) {
+		collegeService.increaseMarksStudent(id, delta);
 	}
 	
 }
